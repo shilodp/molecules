@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Движение молекул и температура</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--text:#1b2230;--muted:#5d6779;--box:#0f1626;--accent:#e2553f;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141d;--card:#1a2030;--text:#e8ecf4;--muted:#93a0b8;--box:#0a0e17}}
+:root[data-theme="dark"]{--bg:#10141d;--card:#1a2030;--text:#e8ecf4;--muted:#93a0b8;--box:#0a0e17}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;padding:16px}
+.wrap{width:100%;max-width:760px}
+h1{font-size:1.3rem;margin:4px 0 12px}
+.panel{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px}
+.row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.temp{font-size:1.5rem;font-weight:700;color:var(--accent)}
+.state{color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.scale{display:flex;justify-content:space-between;color:var(--muted);font-size:.8rem}
+canvas{display:block;width:100%;height:60vh;min-height:280px;background:var(--box);border-radius:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Хаотичное движение молекул</h1>
+  <div class="panel">
+    <div class="row"><span class="temp" id="t">25 °C</span><span class="state" id="s"></span></div>
+    <input type="range" id="slider" min="-200" max="500" value="25">
+    <div class="scale"><span>холодно</span><span>горячо</span></div>
+  </div>
+  <canvas id="c"></canvas>
+</div>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const slider=document.getElementById('slider'),tEl=document.getElementById('t'),sEl=document.getElementById('s');
+let W=0,H=0,C=+slider.value,T=C+273.15;
+const N=70,R=5,P=[];
+function resize(){
+  const d=window.devicePixelRatio||1,r=cv.getBoundingClientRect();
+  W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);
+}
+resize();addEventListener('resize',resize);
+for(let i=0;i<N;i++)P.push({x:W*(.3+.4*Math.random()),y:H*(.3+.4*Math.random()),vx:0,vy:0});
+function f(){return (T-50)/750}
+function draw(){
+  const k=f(), target=0.15+k*4.5, d0=13+k*48;
+  for(let i=0;i<N;i++){
+    const a=P[i];
+    for(let j=i+1;j<N;j++){
+      const b=P[j];let dx=b.x-a.x,dy=b.y-a.y,r=Math.hypot(dx,dy)||.01;
+      if(r>d0*2)continue;
+      let F=r<d0?-(d0-r)*.03:(r-d0)*.0025;
+      dx/=r;dy/=r;
+      a.vx+=F*dx;a.vy+=F*dy;b.vx-=F*dx;b.vy-=F*dy;
+    }
+  }
+  const bg=getComputedStyle(document.documentElement).getPropertyValue('--box');
+  ctx.clearRect(0,0,W,H);
+  for(const p of P){
+    p.vx+=(Math.random()-.5)*(.05+k*.6);p.vy+=(Math.random()-.5)*(.05+k*.6);
+    const sp=Math.hypot(p.vx,p.vy)||.01,s=1+(target/sp-1)*.06;
+    p.vx*=s;p.vy*=s;
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<R){p.x=R;p.vx=Math.abs(p.vx)}
+    if(p.x>W-R){p.x=W-R;p.vx=-Math.abs(p.vx)}
+    if(p.y<R){p.y=R;p.vy=Math.abs(p.vy)}
+    if(p.y>H-R){p.y=H-R;p.vy=-Math.abs(p.vy)}
+    const hue=220-220*Math.min(1,Math.hypot(p.vx,p.vy)/4.5);
+    ctx.fillStyle=`hsl(${hue},85%,60%)`;
+    ctx.beginPath();ctx.arc(p.x,p.y,R,0,6.2832);ctx.fill();
+  }
+  requestAnimationFrame(draw);
+}
+function upd(){
+  C=+slider.value;T=C+273.15;tEl.textContent=C+' °C';
+  sEl.textContent=T<200?'твёрдое: молекулы почти на месте':T<450?'жидкость: молекулы скользят рядом':'газ: молекулы быстро разлетаются';
+}
+slider.addEventListener('input',upd);upd();draw();
+</script>
+</body>
+</html>
